@@ -328,3 +328,7 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+/Src/WebChatHost/appsettings.debugbot.json
+/Src/WebChatHost/appsettings.development.json
+/Src/WebChatHost/appsettings.local.json
+/Src/WebChatHost/appsettings.empty.json

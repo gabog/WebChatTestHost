@@ -1,0 +1,37 @@
+﻿@model Gabog.WebChatHost.Models.WebChatViewModel
+@{
+    ViewData["Title"] = "Web Chat V3";
+}
+    <link href="https://cdn.botframework.com/botframework-webchat/latest/botchat.css" rel="stylesheet" />
+<div class="content-row">
+    <div id="webchat" role="main"></div>
+</div>
+<script src="https://cdn.botframework.com/botframework-webchat/latest/botchat.js"></script>
+<script src="https://cdn.botframework.com/botframework-webchat/latest/CognitiveServices.js"></script>
+<script>
+    var userId = '@Model.UserID';
+    var userName = '@Model.UserName';
+    var speechKey = '@Model.BingSpeechKey';
+    var webChatSecret = '@Model.WebChatSecret';
+    var voiceName = '@Model.VoiceName';
+    const params = BotChat.queryParams(location.search);
+    const speechOptions = {
+        speechRecognizer: new CognitiveServices.SpeechRecognizer({ subscriptionKey: speechKey }),
+        speechSynthesizer: new CognitiveServices.SpeechSynthesizer({
+            gender: CognitiveServices.SynthesisGender.Male,
+            subscriptionKey: speechKey,
+            voiceName: voiceName
+        })
+    };
+    BotChat.App({
+        directLine: {
+            secret: params['s'] || webChatSecret
+        },
+        speechOptions: speechOptions,
+        user: { id: userId },
+        bot: { id: 'GGDebugBot' },
+        resize: 'detect',
+        webSocket: 'true'
+
+    }, document.getElementById("webchat"));
+</script>

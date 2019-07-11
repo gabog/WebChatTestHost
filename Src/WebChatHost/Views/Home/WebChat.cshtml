@@ -1,0 +1,50 @@
+﻿@model Gabog.WebChatHost.Models.WebChatViewModel
+@{
+    ViewData["Title"] = "Web Chat";
+}
+<div class="content-row">
+    <div id="webchat" role="main"></div>
+</div>
+<script src="/webchatlocal/webchat.js"></script>
+<!--
+<script src="webchatlocal/webchat.js"></script>
+<script src="https://cdn.botframework.com/botframework-webchat/master/webchat.js"></script>
+-->
+<script>
+    (async function() {
+        var userId = '@Model.UserID';
+        var userName = '@Model.UserName';
+        var speechKey = '@Model.SpeechKey';
+        var speechRegion = '@Model.SpeechRegion';
+        var directLineToken = '@Model.DirectLineToken';
+
+        // Initials are captured used for user avatar
+        var userInitials = userName.replace(/(\S)\S*\s*/ig, "$1");
+
+        let speechFactory;
+
+        if (speechKey != '' && speechRegion != '') {
+            speechFactory  = await window.WebChat.createCognitiveServicesSpeechServicesPonyfillFactory({
+                region: speechRegion,
+                subscriptionKey: speechKey
+            });
+        }
+
+        var bot = window.WebChat.createDirectLine({
+            token: directLineToken,
+            userID: userId
+        });
+
+        window.WebChat.renderWebChat({
+            directLine: bot,
+            userID: userId,
+            username: userName,
+            locale: 'en-US',
+            botAvatarInitials: 'VA',
+            userAvatarInitials: userInitials,
+            webSpeechPonyfillFactory: speechFactory
+        }, document.getElementById('webchat'));
+
+        document.querySelector('#webchat > *').focus();
+    })().catch(err => alert(err));
+</script>
