@@ -24,13 +24,13 @@ namespace Gabog.WebChatHost.Controllers
     public class HomeController : Controller
     {
         public const string AadObjectidentifierClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+        private readonly string _bingSpeechKey;
         private readonly ICredentialProvider _credentialProvider;
         private readonly string _directLineEndpoint;
 
         private readonly string _directLineSecret;
         private readonly ILinkedAccountRepository _repository = new LinkedAccountRepository();
         private readonly string _speechKey;
-        private readonly string _bingSpeechKey;
         private readonly string _speechRegion;
         private readonly string _voiceName;
         private readonly string _webchatSecret;
@@ -159,6 +159,43 @@ namespace Gabog.WebChatHost.Controllers
             return RedirectToAction("LinkedAccounts");
         }
 
+        /// <summary>
+        /// Retrieve a URL for the user to link a given connection name to their Bot
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
+        public async Task<IActionResult> SignIn(TokenStatus account)
+        {
+            var userId = GetUserId();
+
+            var link = await _repository.GetSignInLinkAsync(userId, _credentialProvider, account.ConnectionName, $"{Request.Scheme}://{Request.Host.Value}/Home/LinkedAccounts");
+
+            return Redirect(link);
+        }
+
+        /// <summary>
+        /// Sign a user out of a given connection name previously linked to their Bot
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
+        public async Task<IActionResult> SignOut(TokenStatus account)
+        {
+            var userId = GetUserId();
+
+            await _repository.SignOutAsync(userId, _credentialProvider, account.ConnectionName);
+
+            return RedirectToAction("LinkedAccounts");
+        }
+
+        public async Task<IActionResult> SignOutAll()
+        {
+            var userId = GetUserId();
+
+            await _repository.SignOutAsync(userId, _credentialProvider);
+
+            return RedirectToAction("LinkedAccounts");
+        }
+
         private string GetUserId()
         {
             // If the user has overriden (to work around emulator blocker)
@@ -206,52 +243,29 @@ namespace Gabog.WebChatHost.Controllers
 
         private HttpResponseMessage GetDirectLineTokenResponse()
         {
-            var directLineClient = new HttpClient();
-            directLineClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _directLineSecret);
+            using (var directLineClient = new HttpClient())
+            {
+                // TODO: need to test if webchatSecret works with linked accounts, otherwise I need to switch back to use directlinesecret.
+                directLineClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _webchatSecret);
 
-            // In order to avoid magic code prompts we need to set a TrustedOrigin, therefore requests using the token can be validated
-            // as coming from this web-site and protecting against scenarios where a URL is shared with someone else
-            var trustedOrigin = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
+                // In order to avoid magic code prompts we need to set a TrustedOrigin, therefore requests using the token can be validated
+                // as coming from this web-site and protecting against scenarios where a URL is shared with someone else
+                var trustedOrigin = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
 
-            var response = directLineClient.PostAsync($"{_directLineEndpoint}/tokens/generate", new StringContent(JsonConvert.SerializeObject(new { TrustedOrigins = new[] { trustedOrigin } }), Encoding.UTF8, "application/json")).Result;
-            return response;
-        }
+                var body = new DirectLineTokenRequest()
+                {
+                    TrustedOrigins = new[] { trustedOrigin },
+                    User = new DirectLineUser()
+                    {
+                        Id = GetUserId(),
+                        Name = GetUserName()
+                    }
+                };
 
-        /// <summary>
-        /// Retrieve a URL for the user to link a given connection name to their Bot
-        /// </summary>
-        /// <param name="account"></param>
-        /// <returns></returns>
-        public async Task<IActionResult> SignIn(TokenStatus account)
-        {
-            var userId = GetUserId();
-
-            var link = await _repository.GetSignInLinkAsync(userId, _credentialProvider, account.ConnectionName, $"{Request.Scheme}://{Request.Host.Value}/Home/LinkedAccounts");
-
-            return Redirect(link);
-        }
-
-        /// <summary>
-        /// Sign a user out of a given connection name previously linked to their Bot
-        /// </summary>
-        /// <param name="account"></param>
-        /// <returns></returns>
-        public async Task<IActionResult> SignOut(TokenStatus account)
-        {
-            var userId = GetUserId();
-
-            await _repository.SignOutAsync(userId, _credentialProvider, account.ConnectionName);
-
-            return RedirectToAction("LinkedAccounts");
-        }
-
-        public async Task<IActionResult> SignOutAll()
-        {
-            var userId = GetUserId();
-
-            await _repository.SignOutAsync(userId, _credentialProvider);
-
-            return RedirectToAction("LinkedAccounts");
+                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+                var response = directLineClient.PostAsync($"{_directLineEndpoint}tokens/generate", content).Result;
+                return response;
+            }
         }
     }
 }

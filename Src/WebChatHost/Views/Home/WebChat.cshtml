@@ -5,7 +5,7 @@
 <div class="content-row">
     <div id="webchat" role="main"></div>
 </div>
-<script src="/webchatlocal/webchat.js"></script>
+<script src="https://cdn.botframework.com/botframework-webchat/master/webchat.js"></script>
 <!--
 <script src="webchatlocal/webchat.js"></script>
 <script src="https://cdn.botframework.com/botframework-webchat/master/webchat.js"></script>
@@ -30,13 +30,8 @@
             });
         }
 
-        var bot = window.WebChat.createDirectLine({
-            token: directLineToken,
-            userID: userId
-        });
-
         window.WebChat.renderWebChat({
-            directLine: bot,
+            directLine: window.WebChat.createDirectLine({ token: directLineToken }),
             userID: userId,
             username: userName,
             locale: 'en-US',
